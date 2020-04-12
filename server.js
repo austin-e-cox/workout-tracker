@@ -91,22 +91,10 @@ app.get("/api/workouts", (req, res) => {
       // add duration into data to return to client
       data[data.length-1].totalDuration = workoutDuration;
       console.log(data[data.length-1].totalDuration);
-      console.log(data);
+      console.log(data[data.length-1]);
       res.json(data);
   })
 });
-
-// get last workout
-app.get("/api/workouts", (req, res) => {
-Workout.find({})
-    .then(dbBook => {
-      res.json(dbBook);
-    })
-    .catch(err => {
-      res.send(err);
-  });
-});
-
 
 // get workouts in range
 app.get("/api/workouts/range", (req, res) => {
