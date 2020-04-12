@@ -1,19 +1,35 @@
 //module includes
 const express = require("express");
+const mongojs = require("mongojs");
 const mongoose = require("mongoose");
-const db = require("./models");
+const logger = require("morgan");
+const path = require("path");
+const Workout = require("./models/workout");
 const app = express();
 
 // set port number
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 // app middleware
+app.use(logger("dev"));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static("public"));
 
 // establish database connection
-mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost/populate", { useNewUrlParser: true });
+mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost/workout", { useNewUrlParser: true });
+
+
+// route to exercise page
+app.get("/exercise", (req, res) => {
+  res.sendFile(path.join(__dirname + '/public/exercise.html'));
+});
+
+// route to stats page
+app.get("/stats", (req, res) => {
+  res.sendFile(path.join(__dirname + '/public/stats.html'));
+});
+
 
 //----------------//
 // database calls //
@@ -21,7 +37,7 @@ mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost/populate", { us
 
 // create workout
 app.post("/api/workouts", ({body}, res) => {
-  db.Workout.create(body)
+  Workout.create(body)
     .then(db_res => {
       res.json(db_res);
     })
@@ -33,51 +49,68 @@ app.post("/api/workouts", ({body}, res) => {
 // add exercise
 app.put("/api/workouts/:id", (req, res) => {
   // find the exercise in the database
-  db.workouts.findOne({
-    _id: ObjectId(req.params.id)
-  }, (err, data) => {
+  Workout.findOne({
+    _id: mongojs.ObjectId(req.params.id)
+  }, 
     // add the exercise to the existing one
-    db.Workout.updateOne({_id: ObjectId(req.params.id)}, 
+    (err, data) => {
+    Workout.updateOne({_id: mongojs.ObjectId(req.params.id)}, 
     {
       $set: {
         exercises: [...data.exercises, req.body]
       }
     },
-    // final process after data is updated
-    (err, data) => {
-      if (err)
-        res.send(err);
-      res.json(data);
+      // final process after data is updated
+      (err, data) => {
+        if (err)
+          res.send(err);
+        res.json(data);
     })
   })
 })
 
 // get workouts
 app.get("/api/workouts", (req, res) => {
-  db.Workout.find({})
-    .then(dbBook => {
-      res.json(dbBook);
-    })
-    .catch(err => {
-      res.json(err);
-  });
+  Workout.find({}, 
+    (err, data) => {
+      if (err)
+        res.send(err);
+      // if no data, return blank
+      if (data.length === 0){
+        res.json(data);
+        return;   
+      }
+      
+      // determine duration of last exercise
+      let workoutDuration = 0;
+      const lastWorkout = data[data.length-1];
+      lastWorkout.exercises.forEach(exercise => {
+        workoutDuration += exercise.duration;
+      });
+
+      // add duration into data to return to client
+      data[data.length-1].totalDuration = workoutDuration;
+      console.log(data[data.length-1].totalDuration);
+      console.log(data);
+      res.json(data);
+  })
 });
 
 // get last workout
 app.get("/api/workouts", (req, res) => {
-  db.Workout.find({})
+Workout.find({})
     .then(dbBook => {
       res.json(dbBook);
     })
     .catch(err => {
-      res.json(err);
+      res.send(err);
   });
 });
 
 
 // get workouts in range
 app.get("/api/workouts/range", (req, res) => {
-  db.Workout.find({})
+  Workout.find({})
     .then(dbBook => {
       res.json(dbBook);
     })
@@ -85,7 +118,9 @@ app.get("/api/workouts/range", (req, res) => {
       res.json(err);
   });
 });
-  
+
+
+// start app
 app.listen(PORT, () => {
-  console.log(`App running on port ${PORT}!`);
+  console.log(`App running on port ${PORT}`);
 });
