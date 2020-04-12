@@ -84,15 +84,15 @@ app.get("/api/workouts", (req, res) => {
       
       // determine duration of last exercise
       let workoutDuration = 0;
-      const lastWorkout = data[data.length-1];
+      const last = data.length-1;
+      const lastWorkout = data[last];
       lastWorkout.exercises.forEach(exercise => {
         workoutDuration += exercise.duration;
       });
 
       // add duration into data to return to client
-      data[data.length-1].totalDuration = workoutDuration;
-      console.log(data[data.length-1].totalDuration);
-      console.log(data[data.length-1]);
+      // must dig down into object's _doc for it to be set properly
+      data[last]._doc.totalDuration = workoutDuration;
       res.json(data);
   })
 });
